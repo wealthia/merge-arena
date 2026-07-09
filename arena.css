@@ -686,6 +686,77 @@ button {
   line-height: 1.55;
 }
 
+.daily-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(94, 240, 208, 0.32);
+  background: linear-gradient(135deg, rgba(94, 240, 208, 0.14), rgba(255, 200, 87, 0.1));
+}
+
+.daily-card__info h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.daily-card__info p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.daily-card #dailyCardButton {
+  min-height: 40px;
+  padding: 0 16px;
+  flex: 0 0 auto;
+}
+
+.daily-card.is-claimed {
+  opacity: 0.55;
+}
+
+.danger-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 107, 138, 0.3);
+  background: rgba(255, 107, 138, 0.06);
+}
+
+.danger-card h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--danger);
+}
+
+.danger-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.btn--danger {
+  min-height: 40px;
+  padding: 0 16px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 107, 138, 0.5);
+  background: rgba(255, 107, 138, 0.16);
+  color: var(--danger);
+  font-weight: 800;
+  font-size: 13px;
+}
+
 .dock {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -715,6 +786,27 @@ button {
 }
 
 .dock__item--shop i { color: var(--gold); }
+
+.dock__item {
+  position: relative;
+}
+
+.dock__dot {
+  position: absolute;
+  top: 4px;
+  right: 18%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 8px rgba(255, 107, 138, 0.8);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
 
 .toast {
   position: fixed;

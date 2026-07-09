@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./arena.css?v=6" />
+  <link rel="stylesheet" href="./arena.css?v=7" />
 </head>
 <body>
   <div class="fx" aria-hidden="true">
@@ -176,11 +176,26 @@
             <li><span>Wins</span><strong id="gloryWins">0</strong></li>
             <li><span>Combines</span><strong id="gloryMerges">0</strong></li>
             <li><span>Best Power</span><strong id="gloryPower">0</strong></li>
+            <li><span>Daily Streak</span><strong id="gloryStreak">0</strong></li>
           </ul>
         </div>
         <div class="tip-card">
           <h3>Get strong fast</h3>
           <p>1. Tap <b>Get Hero</b><br/>2. Drag two same heroes together<br/>3. Fight when your power is higher<br/>4. Buy Rare/Epic in Shop if stuck</p>
+        </div>
+        <div class="daily-card" id="dailyCard">
+          <div class="daily-card__info">
+            <h3>Daily Reward</h3>
+            <p id="dailyCardText">Come back each day for a bigger streak bonus.</p>
+          </div>
+          <button class="btn btn--battle" id="dailyCardButton" type="button">Claim</button>
+        </div>
+        <div class="danger-card">
+          <div>
+            <h3>Reset Progress</h3>
+            <p>Wipes your heroes, gems, trophies and streak. Cannot be undone.</p>
+          </div>
+          <button class="btn btn--danger" id="resetButton" type="button">Reset</button>
         </div>
       </section>
     </main>
@@ -189,7 +204,7 @@
       <button class="dock__item is-active" type="button" data-nav="play"><i>🎮</i><span>Play</span></button>
       <button class="dock__item" type="button" data-nav="roster"><i>🦸</i><span>Heroes</span></button>
       <button class="dock__item dock__item--shop" type="button" data-nav="shop"><i>🛒</i><span>Shop</span></button>
-      <button class="dock__item" type="button" data-nav="rank"><i>🏆</i><span>Progress</span></button>
+      <button class="dock__item" type="button" data-nav="rank"><i>🏆</i><span>Progress</span><i class="dock__dot" id="rankBadge" hidden></i></button>
     </nav>
   </div>
 
@@ -220,6 +235,16 @@
     </div>
   </div>
 
+  <div class="modal" id="dailyModal" hidden>
+    <div class="modal__card">
+      <p class="eyebrow">Daily Reward</p>
+      <h3 id="dailyTitle">Day 1 Streak</h3>
+      <p id="dailyText">Come back every day to grow your streak bonus.</p>
+      <div class="result-rewards" id="dailyRewards"></div>
+      <button class="btn btn--battle" id="dailyClaim" type="button">Claim Reward</button>
+    </div>
+  </div>
+
   <div class="modal" id="payModal" hidden>
     <div class="modal__card">
       <p class="eyebrow">Shop</p>
@@ -233,6 +258,6 @@
     </div>
   </div>
 
-  <script src="./arena.js?v=6"></script>
+  <script src="./arena.js?v=7"></script>
 </body>
 </html>
