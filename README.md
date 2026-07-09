@@ -2,20 +2,22 @@
 
 Telegram mini-app: combine heroes, grow power, win fights.
 
-## ✅ Play now (opens)
+## Play
 
-### https://wealthia.github.io/wealthia/merge-arena/
+**https://wealthia.github.io/merge-arena/**
 
-Also: https://wealthia.github.io/wealthia/
+Backup (same game): https://wealthia.github.io/wealthia/merge-arena/
 
-> `https://wealthia.github.io/merge-arena/` needs Pages enabled on **this** repo first (Settings → Pages → GitHub Actions). Until then use the link above.
+## Pages setup note
+Do **not** put `wealthia.github.io/merge-arena/` in **Custom domain**.
+Leave Custom domain **empty**. Source should be **GitHub Actions**.
 
 ## How to play
 1. Tap **Get Hero**
 2. Drag two same heroes together to combine / upgrade
 3. Tap **Fight!** when your power is higher than the level
 
-## BotFather Menu Button URL
+## BotFather
 ```
-https://wealthia.github.io/wealthia/merge-arena/
+https://wealthia.github.io/merge-arena/
 ```
