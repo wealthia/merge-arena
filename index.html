@@ -4,12 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
   <meta name="theme-color" content="#12091F" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>MERGE ARENA</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./arena.css?v=6" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./arena.css?v=8" />
 </head>
 <body>
   <div class="fx" aria-hidden="true">
@@ -29,6 +34,9 @@
         </div>
       </div>
       <div class="hud__stats">
+        <button class="chip chip--sound" id="soundToggle" type="button" title="Toggle sound">
+          <span id="soundIcon">🔊</span>
+        </button>
         <button class="chip chip--energy" id="energyChip" type="button" title="Buy energy">
           <span>⚡</span><strong id="energyValue">10</strong><em>/20</em>
         </button>
@@ -62,6 +70,10 @@
             <span>Your Power</span>
             <strong id="powerValue">0</strong>
           </div>
+        </div>
+
+        <div class="matchup" id="matchupWrap">
+          <span id="matchupText">Checking level power…</span>
         </div>
 
         <div class="board-wrap">
@@ -182,6 +194,11 @@
           <h3>Get strong fast</h3>
           <p>1. Tap <b>Get Hero</b><br/>2. Drag two same heroes together<br/>3. Fight when your power is higher<br/>4. Buy Rare/Epic in Shop if stuck</p>
         </div>
+        <div class="section-head section-head--tight">
+          <h2>Achievements</h2>
+          <p>One-time bonuses — claim them as you unlock them.</p>
+        </div>
+        <div class="achv-list" id="achvList"></div>
       </section>
     </main>
 
@@ -211,7 +228,8 @@
   </div>
 
   <div class="modal" id="resultModal" hidden>
-    <div class="modal__card">
+    <div class="modal__card modal__card--result">
+      <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
       <p class="eyebrow" id="resultEyebrow">Victory</p>
       <h3 id="resultTitle">Level Cleared</h3>
       <p id="resultText">+ trophies</p>
@@ -233,6 +251,6 @@
     </div>
   </div>
 
-  <script src="./arena.js?v=6"></script>
+  <script src="./arena.js?v=8"></script>
 </body>
 </html>

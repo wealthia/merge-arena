@@ -1,0 +1,12 @@
+{
+  "name": "merge-arena",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Merge Arena — Telegram mini-app game.",
+  "scripts": {
+    "test": "node tests/arena.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}

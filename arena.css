@@ -158,6 +158,13 @@ button {
 .chip--energy { border-color: rgba(94, 240, 208, 0.4); color: var(--cyan); }
 .chip--gem { color: #9ec0ff; }
 .chip--trophy { color: var(--gold); }
+.chip--sound {
+  min-width: 34px;
+  padding: 0;
+  justify-content: center;
+  font-size: 15px;
+}
+.chip--sound[aria-pressed="true"] { opacity: 0.55; }
 
 .howto {
   padding: 12px 14px;
@@ -268,6 +275,40 @@ button {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-align: center;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.matchup.is-ready {
+  border-color: rgba(109, 255, 181, 0.45);
+  background: rgba(109, 255, 181, 0.1);
+  color: var(--ok);
+}
+
+.matchup.is-short {
+  border-color: rgba(255, 107, 138, 0.4);
+  background: rgba(255, 107, 138, 0.08);
+  color: var(--danger);
+}
+
+.matchup.is-boss {
+  border-color: rgba(255, 200, 87, 0.55);
+  background: rgba(255, 200, 87, 0.12);
+  box-shadow: 0 0 18px rgba(255, 200, 87, 0.18);
 }
 
 .board-wrap {
@@ -686,6 +727,82 @@ button {
   line-height: 1.55;
 }
 
+.section-head--tight {
+  margin-top: 4px;
+}
+
+.section-head--tight h2 {
+  font-size: 16px;
+}
+
+.achv-list {
+  display: grid;
+  gap: 8px;
+}
+
+.achv-card {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.achv-card.is-ready {
+  border-color: rgba(255, 200, 87, 0.5);
+  background: rgba(255, 200, 87, 0.1);
+}
+
+.achv-card.is-claimed {
+  opacity: 0.55;
+}
+
+.achv-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.achv-card__body h3 {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.achv-card__body p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.achv-card__claim {
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 200, 87, 0.5);
+  background: linear-gradient(90deg, #ffc857, #ff7ac8);
+  color: #2a1030;
+}
+
+.achv-card__claim:disabled {
+  opacity: 0.4;
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
 .dock {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -759,6 +876,36 @@ button {
   min-height: 220px;
 }
 
+.modal__card--result {
+  position: relative;
+  overflow: hidden;
+}
+
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation-name: confettiFall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confettiFall {
+  from { transform: translateY(0) rotate(0deg); opacity: 0.95; }
+  to { transform: translateY(260px) rotate(340deg); opacity: 0; }
+}
+
 .eyebrow {
   margin: 0;
   font-size: 11px;
@@ -822,6 +969,17 @@ button {
 @keyframes punch {
   from { transform: translateX(0); }
   to { transform: translateX(4px) scale(1.03); }
+}
+
+.battle-stage.shake {
+  animation: shakeStage 420ms ease;
+}
+
+@keyframes shakeStage {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
 }
 
 .battle-bars {
