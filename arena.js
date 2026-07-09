@@ -4,18 +4,6 @@
   const ROWS = 4;
   const SIZE = COLS * ROWS;
   const ENERGY_MAX = 20;
-  const DAILY_READY_MS = 20 * 60 * 60 * 1000; // claimable after 20h
-  const DAILY_RESET_MS = 48 * 60 * 60 * 1000; // streak breaks after 48h
-
-  const DAILY_REWARDS = [
-    { energy: 4, gems: 20 },
-    { energy: 5, gems: 30 },
-    { energy: 6, gems: 40 },
-    { energy: 8, gems: 55 },
-    { energy: 10, gems: 70 },
-    { energy: 12, gems: 90 },
-    { energy: 20, gems: 150 }
-  ];
 
   const UNIT_DEFS = [
     { id: "spark", name: "Spark", icon: "⚡", rarity: "common", basePower: 12 },
@@ -88,8 +76,6 @@
     merges: 0,
     highestPower: 0,
     surgeBattles: 0,
-    dailyStreak: 0,
-    lastDailyClaim: 0,
     discovered: ["spark", "blade"],
     board: Array(SIZE).fill(null),
     lastEnergyAt: Date.now()
@@ -138,18 +124,7 @@
     gloryTrophies: $("gloryTrophies"),
     gloryWins: $("gloryWins"),
     gloryMerges: $("gloryMerges"),
-    gloryPower: $("gloryPower"),
-    gloryStreak: $("gloryStreak"),
-    dailyCard: $("dailyCard"),
-    dailyCardText: $("dailyCardText"),
-    dailyCardButton: $("dailyCardButton"),
-    dailyModal: $("dailyModal"),
-    dailyTitle: $("dailyTitle"),
-    dailyText: $("dailyText"),
-    dailyRewards: $("dailyRewards"),
-    dailyClaim: $("dailyClaim"),
-    rankBadge: $("rankBadge"),
-    resetButton: $("resetButton")
+    gloryPower: $("gloryPower")
   };
 
   function asNumber(value, fallback) {
@@ -200,8 +175,6 @@
         merges: Math.max(0, Math.floor(asNumber(parsed.merges, base.merges))),
         highestPower: Math.max(0, Math.floor(asNumber(parsed.highestPower, base.highestPower))),
         surgeBattles: Math.max(0, Math.floor(asNumber(parsed.surgeBattles, base.surgeBattles))),
-        dailyStreak: Math.max(0, Math.min(7, Math.floor(asNumber(parsed.dailyStreak, base.dailyStreak)))),
-        lastDailyClaim: Math.max(0, Math.floor(asNumber(parsed.lastDailyClaim, base.lastDailyClaim))),
         lastEnergyAt: asNumber(parsed.lastEnergyAt, base.lastEnergyAt),
         discovered: discovered.length ? discovered : base.discovered,
         board: sanitizeBoard(parsed.board)
@@ -322,98 +295,6 @@
     }
   }
 
-  function dailyStatus() {
-    const now = Date.now();
-    const last = Number(state.lastDailyClaim || 0);
-    if (!last) {
-      return { ready: true, nextDay: 1, msRemaining: 0 };
-    }
-    const elapsed = now - last;
-    if (elapsed >= DAILY_READY_MS) {
-      const missed = elapsed >= DAILY_RESET_MS;
-      const streak = missed ? 0 : state.dailyStreak;
-      const nextDay = (streak % DAILY_REWARDS.length) + 1;
-      return { ready: true, nextDay, msRemaining: 0 };
-    }
-    return { ready: false, nextDay: (state.dailyStreak % DAILY_REWARDS.length) + 1, msRemaining: DAILY_READY_MS - elapsed };
-  }
-
-  function formatDuration(ms) {
-    const totalMin = Math.max(0, Math.ceil(ms / 60000));
-    const h = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    if (h <= 0) return `${m}m`;
-    return `${h}h ${m}m`;
-  }
-
-  function updateDailyUI() {
-    const status = dailyStatus();
-    if (els.rankBadge) els.rankBadge.hidden = !status.ready;
-    if (els.dailyCard) els.dailyCard.classList.toggle("is-claimed", !status.ready);
-    if (els.dailyCardButton) {
-      els.dailyCardButton.disabled = !status.ready;
-      els.dailyCardButton.textContent = status.ready ? "Claim" : "Claimed";
-    }
-    if (els.dailyCardText) {
-      els.dailyCardText.textContent = status.ready
-        ? `Day ${status.nextDay} reward is ready to claim!`
-        : `Next reward (Day ${status.nextDay}) in ${formatDuration(status.msRemaining)}. Streak: ${state.dailyStreak}/7`;
-    }
-  }
-
-  function openDailyModal(autoTriggered) {
-    const status = dailyStatus();
-    if (!status.ready) {
-      if (!autoTriggered) showToast(`Next reward in ${formatDuration(status.msRemaining)}.`);
-      return;
-    }
-    if (!els.dailyModal) return;
-    const reward = DAILY_REWARDS[status.nextDay - 1];
-    setText(els.dailyTitle, `Day ${status.nextDay} Streak`);
-    setText(els.dailyText, "Claim today's reward and come back tomorrow for more.");
-    if (els.dailyRewards) {
-      els.dailyRewards.innerHTML = `
-        <span>+${reward.energy} ⚡</span>
-        <span>+${reward.gems} 💎</span>
-      `;
-    }
-    els.dailyModal.hidden = false;
-  }
-
-  function claimDaily() {
-    const status = dailyStatus();
-    if (!status.ready) {
-      if (els.dailyModal) els.dailyModal.hidden = true;
-      return;
-    }
-    const reward = DAILY_REWARDS[status.nextDay - 1];
-    state.energy = Math.min(ENERGY_MAX, state.energy + reward.energy);
-    state.gems += reward.gems;
-    state.dailyStreak = status.nextDay;
-    state.lastDailyClaim = Date.now();
-    saveState();
-    if (els.dailyModal) els.dailyModal.hidden = true;
-    updateDailyUI();
-    renderHud();
-    showToast(`Day ${status.nextDay} reward claimed — +${reward.energy} ⚡ +${reward.gems} 💎`);
-    haptic("success");
-  }
-
-  function resetProgress() {
-    const ok = window.confirm(
-      "Reset all progress? Heroes, gems, trophies and your daily streak will be lost."
-    );
-    if (!ok) return;
-    state = defaultState();
-    saveState();
-    renderBoard();
-    renderRoster();
-    renderGlory();
-    updateDailyUI();
-    showToast("Progress reset. Fresh start!");
-    haptic("light");
-  }
-
   function initTelegram() {
     const tg = window.Telegram && window.Telegram.WebApp;
     if (!tg) return;
@@ -437,10 +318,7 @@
       btn.classList.toggle("is-active", btn.dataset.nav === name);
     });
     if (name === "roster") renderRoster();
-    if (name === "rank") {
-      renderGlory();
-      updateDailyUI();
-    }
+    if (name === "rank") renderGlory();
   }
 
   function setText(el, value) {
@@ -462,7 +340,6 @@
     if (els.battleButton) {
       els.battleButton.disabled = battleBusy || state.energy < 1 || power <= 0;
     }
-    updateDailyUI();
   }
 
   function renderBoard() {
@@ -537,7 +414,6 @@
     setText(els.gloryWins, state.wins);
     setText(els.gloryMerges, state.merges);
     setText(els.gloryPower, state.highestPower);
-    setText(els.gloryStreak, state.dailyStreak);
   }
 
   function bindUnitDrag(node, index) {
@@ -870,10 +746,6 @@
     }
     if (els.payCancel) els.payCancel.addEventListener("click", closePay);
     if (els.payConfirm) els.payConfirm.addEventListener("click", confirmPay);
-
-    if (els.dailyCardButton) els.dailyCardButton.addEventListener("click", () => openDailyModal(false));
-    if (els.dailyClaim) els.dailyClaim.addEventListener("click", claimDaily);
-    if (els.resetButton) els.resetButton.addEventListener("click", resetProgress);
   }
 
   function seedIfEmpty() {
@@ -894,13 +766,9 @@
     renderBoard();
     renderRoster();
     renderGlory();
-    updateDailyUI();
     // soft energy tip
     if (state.energy <= 3) {
       setTimeout(() => showToast("Low energy — Shop keeps you playing."), 900);
-    }
-    if (dailyStatus().ready) {
-      setTimeout(() => openDailyModal(true), 600);
     }
   }
 
