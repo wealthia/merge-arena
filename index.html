@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#12091F" />
+  <title>MERGE ARENA</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./arena.css?v=5" />
+</head>
+<body>
+  <div class="fx" aria-hidden="true">
+    <div class="fx__grid"></div>
+    <div class="fx__glow fx__glow--a"></div>
+    <div class="fx__glow fx__glow--b"></div>
+    <div class="fx__glow fx__glow--c"></div>
+  </div>
+
+  <div class="app" id="app">
+    <header class="hud">
+      <div class="brand">
+        <span class="brand__mark">🔥</span>
+        <div>
+          <strong>MERGE ARENA</strong>
+          <small>Combine heroes · Win fights</small>
+        </div>
+      </div>
+      <div class="hud__stats">
+        <button class="chip chip--energy" id="energyChip" type="button" title="Buy energy">
+          <span>⚡</span><strong id="energyValue">10</strong><em>/20</em>
+        </button>
+        <div class="chip chip--gem">
+          <span>💎</span><strong id="gemValue">0</strong>
+        </div>
+        <div class="chip chip--trophy">
+          <span>🏆</span><strong id="trophyValue">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="stage">
+      <!-- PLAY -->
+      <section class="view is-active" id="view-play" data-view="play">
+        <div class="howto" id="howtoCard">
+          <strong>How to play</strong>
+          <ol>
+            <li><b>Get Hero</b> — put a fighter on the board</li>
+            <li><b>Drag same heroes together</b> — they combine and get stronger</li>
+            <li><b>Fight</b> — if your power is higher, you win the level</li>
+          </ol>
+        </div>
+
+        <div class="wave-bar">
+          <div>
+            <p class="wave-bar__label">Level</p>
+            <h2 id="waveTitle">Level 1</h2>
+          </div>
+          <div class="wave-bar__power">
+            <span>Your Power</span>
+            <strong id="powerValue">0</strong>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="board" aria-label="Merge board"></div>
+          <div class="board-hint" id="boardHint">Drag two same heroes together ↑</div>
+        </div>
+
+        <div class="play-actions">
+          <button class="btn btn--summon" id="summonButton" type="button">
+            <span>Get Hero</span>
+            <small>costs 1 ⚡</small>
+          </button>
+          <button class="btn btn--battle" id="battleButton" type="button">
+            <span>Fight!</span>
+            <small id="battleCost">costs 1 ⚡</small>
+          </button>
+        </div>
+
+        <div class="unit-strip" id="unitStrip" aria-label="Owned unit types"></div>
+      </section>
+
+      <!-- COLLECTION -->
+      <section class="view" id="view-roster" data-view="roster" hidden>
+        <div class="section-head">
+          <h2>Heroes</h2>
+          <p>Combine heroes to unlock stronger ones.</p>
+        </div>
+        <div class="roster-grid" id="rosterGrid"></div>
+      </section>
+
+      <!-- SHOP -->
+      <section class="view" id="view-shop" data-view="shop" hidden>
+        <div class="section-head">
+          <h2>Shop</h2>
+          <p>Clear prices. You always know what you buy.</p>
+        </div>
+
+        <article class="offer offer--hero" data-buy="energy_refill">
+          <div class="offer__visual offer__visual--energy">⚡</div>
+          <div class="offer__body">
+            <h3>Full Energy</h3>
+            <p>Fill energy to 20 and keep playing.</p>
+            <div class="offer__meta"><span>Instant</span><strong>25 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+
+        <article class="offer" data-buy="energy_pack">
+          <div class="offer__visual offer__visual--bolt">＋</div>
+          <div class="offer__body">
+            <h3>+10 Energy</h3>
+            <p>Quick boost for one more push.</p>
+            <div class="offer__meta"><span>Stackable</span><strong>15 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+
+        <article class="offer offer--rare" data-buy="rare_summon">
+          <div class="offer__visual offer__visual--rare">✦</div>
+          <div class="offer__body">
+            <h3>Rare Hero</h3>
+            <p>Get a strong Rare hero on your board now.</p>
+            <div class="offer__meta"><span>Exact rare</span><strong>40 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+
+        <article class="offer offer--epic" data-buy="epic_summon">
+          <div class="offer__visual offer__visual--epic">◆</div>
+          <div class="offer__body">
+            <h3>Epic Hero</h3>
+            <p>Get a powerful Epic hero instantly.</p>
+            <div class="offer__meta"><span>Exact epic</span><strong>90 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+
+        <article class="offer" data-buy="power_surge">
+          <div class="offer__visual offer__visual--surge">▲</div>
+          <div class="offer__body">
+            <h3>Power Boost</h3>
+            <p>+30% power for your next 3 fights.</p>
+            <div class="offer__meta"><span>3 fights</span><strong>35 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+
+        <article class="offer" data-buy="gem_starter">
+          <div class="offer__visual offer__visual--gem">💎</div>
+          <div class="offer__body">
+            <h3>Gem Pack</h3>
+            <p>+500 gems for upgrades and progress.</p>
+            <div class="offer__meta"><span>500 💎</span><strong>50 ★</strong></div>
+          </div>
+          <button class="offer__cta" type="button">Buy</button>
+        </article>
+      </section>
+
+      <!-- RANK -->
+      <section class="view" id="view-rank" data-view="rank" hidden>
+        <div class="section-head">
+          <h2>Progress</h2>
+          <p>Beat levels. Earn trophies. Grow your team.</p>
+        </div>
+        <div class="glory-card">
+          <div class="glory-card__ring">
+            <strong id="gloryWave">1</strong>
+            <span>Best Level</span>
+          </div>
+          <ul class="glory-stats">
+            <li><span>Trophies</span><strong id="gloryTrophies">0</strong></li>
+            <li><span>Wins</span><strong id="gloryWins">0</strong></li>
+            <li><span>Combines</span><strong id="gloryMerges">0</strong></li>
+            <li><span>Best Power</span><strong id="gloryPower">0</strong></li>
+          </ul>
+        </div>
+        <div class="tip-card">
+          <h3>Get strong fast</h3>
+          <p>1. Tap <b>Get Hero</b><br/>2. Drag two same heroes together<br/>3. Fight when your power is higher<br/>4. Buy Rare/Epic in Shop if stuck</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="dock" aria-label="Main">
+      <button class="dock__item is-active" type="button" data-nav="play"><i>🎮</i><span>Play</span></button>
+      <button class="dock__item" type="button" data-nav="roster"><i>🦸</i><span>Heroes</span></button>
+      <button class="dock__item dock__item--shop" type="button" data-nav="shop"><i>🛒</i><span>Shop</span></button>
+      <button class="dock__item" type="button" data-nav="rank"><i>🏆</i><span>Progress</span></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="modal" id="battleModal" hidden>
+    <div class="modal__card modal__card--battle">
+      <div class="battle-stage" id="battleStage">
+        <div class="fighter fighter--you" id="fighterYou">YOU</div>
+        <div class="vs">VS</div>
+        <div class="fighter fighter--enemy" id="fighterEnemy">LEVEL</div>
+      </div>
+      <div class="battle-bars">
+        <div class="bar"><span id="youBar"></span></div>
+        <div class="bar bar--enemy"><span id="enemyBar"></span></div>
+      </div>
+      <p class="battle-log" id="battleLog">Fighting…</p>
+    </div>
+  </div>
+
+  <div class="modal" id="resultModal" hidden>
+    <div class="modal__card">
+      <p class="eyebrow" id="resultEyebrow">Victory</p>
+      <h3 id="resultTitle">Level Cleared</h3>
+      <p id="resultText">+ trophies</p>
+      <div class="result-rewards" id="resultRewards"></div>
+      <button class="btn btn--battle" id="resultClose" type="button">Continue</button>
+    </div>
+  </div>
+
+  <div class="modal" id="payModal" hidden>
+    <div class="modal__card">
+      <p class="eyebrow">Shop</p>
+      <h3 id="payTitle">Purchase</h3>
+      <p id="payText">Exact item. Exact Stars price.</p>
+      <div class="pay-actions">
+        <button class="btn btn--ghost" id="payCancel" type="button">Cancel</button>
+        <button class="btn btn--battle" id="payConfirm" type="button">Pay Stars</button>
+      </div>
+      <p class="pay-note">Demo Stars checkout — real Telegram Stars next.</p>
+    </div>
+  </div>
+
+  <script src="./arena.js?v=5"></script>
+</body>
+</html>
