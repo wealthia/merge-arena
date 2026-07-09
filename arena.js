@@ -164,13 +164,15 @@
       const discovered = Array.isArray(parsed.discovered)
         ? parsed.discovered.filter((id) => typeof id === "string" && UNIT_DEFS.some((u) => u.id === id))
         : base.discovered;
+      const wave = Math.max(1, Math.floor(asNumber(parsed.wave, base.wave)));
+      const bestWave = Math.max(wave, Math.max(1, Math.floor(asNumber(parsed.bestWave, base.bestWave))));
       return {
         ...base,
         energy: Math.max(0, Math.min(ENERGY_MAX, Math.floor(asNumber(parsed.energy, base.energy)))),
         gems: Math.max(0, Math.floor(asNumber(parsed.gems, base.gems))),
         trophies: Math.max(0, Math.floor(asNumber(parsed.trophies, base.trophies))),
-        wave: Math.max(1, Math.floor(asNumber(parsed.wave, base.wave))),
-        bestWave: Math.max(1, Math.floor(asNumber(parsed.bestWave, base.bestWave))),
+        wave,
+        bestWave,
         wins: Math.max(0, Math.floor(asNumber(parsed.wins, base.wins))),
         merges: Math.max(0, Math.floor(asNumber(parsed.merges, base.merges))),
         highestPower: Math.max(0, Math.floor(asNumber(parsed.highestPower, base.highestPower))),
@@ -333,7 +335,11 @@
     setText(els.waveTitle, `Level ${state.wave}`);
     const power = squadPower();
     setText(els.powerValue, power);
-    state.highestPower = Math.max(asNumber(state.highestPower, 0), power);
+    const highestPower = Math.max(asNumber(state.highestPower, 0), power);
+    if (highestPower !== state.highestPower) {
+      state.highestPower = highestPower;
+      saveState();
+    }
     if (els.summonButton) {
       els.summonButton.disabled = state.energy < 1 || emptySlots().length === 0;
     }
