@@ -254,12 +254,13 @@
   }
 
   function makeUnit(id, level = 1) {
-    const def = defById(id);
+    const def = defById(id) || UNIT_DEFS[0];
+    const safeLevel = Math.max(1, Math.min(5, Math.floor(asNumber(level, 1))));
     return {
-      uid: `${id}_${Date.now()}_${Math.random().toString(16).slice(2, 7)}`,
-      id,
-      level,
-      rarity: rarityForLevel(level) === "common" ? def.rarity : rarityForLevel(level)
+      uid: `${def.id}_${Date.now()}_${Math.random().toString(16).slice(2, 7)}`,
+      id: def.id,
+      level: safeLevel,
+      rarity: rarityForLevel(safeLevel) === "common" ? def.rarity : rarityForLevel(safeLevel)
     };
   }
 
