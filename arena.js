@@ -4,6 +4,9 @@
   const ROWS = 4;
   const SIZE = COLS * ROWS;
   const ENERGY_MAX = 20;
+  const BOSS_INTERVAL = 5;
+  const BOSS_MULTIPLIER = 1.45;
+  const BOSS_REWARD_MULTIPLIER = 2;
 
   const UNIT_DEFS = [
     { id: "spark", name: "Spark", icon: "⚡", rarity: "common", basePower: 12 },
@@ -13,6 +16,17 @@
     { id: "phantom", name: "Phantom", icon: "👁", rarity: "epic", basePower: 40 },
     { id: "titan", name: "Titan", icon: "🏛", rarity: "epic", basePower: 48 },
     { id: "sovereign", name: "Sovereign", icon: "👑", rarity: "legendary", basePower: 72 }
+  ];
+
+  const ACHIEVEMENTS = [
+    { id: "first_win", title: "First Victory", desc: "Win your first battle.", reward: 20, check: (s) => s.wins >= 1 },
+    { id: "merge_10", title: "Merge Novice", desc: "Combine heroes 10 times.", reward: 30, check: (s) => s.merges >= 10 },
+    { id: "merge_30", title: "Merge Master", desc: "Combine heroes 30 times.", reward: 60, check: (s) => s.merges >= 30 },
+    { id: "wave_5", title: "Getting Started", desc: "Reach Level 5.", reward: 40, check: (s) => s.bestWave >= 5 },
+    { id: "wave_10", title: "Rising Star", desc: "Reach Level 10.", reward: 80, check: (s) => s.bestWave >= 10 },
+    { id: "trophies_100", title: "Trophy Hunter", desc: "Earn 100 trophies.", reward: 60, check: (s) => s.trophies >= 100 },
+    { id: "full_roster", title: "Collector", desc: "Discover every hero type.", reward: 150, check: (s) => s.discovered.length >= UNIT_DEFS.length },
+    { id: "legendary", title: "Legendary", desc: "Unlock the Sovereign hero.", reward: 200, check: (s) => s.discovered.includes("sovereign") }
   ];
 
   const SHOP = {
@@ -76,6 +90,8 @@
     merges: 0,
     highestPower: 0,
     surgeBattles: 0,
+    soundOn: true,
+    achievementsClaimed: [],
     discovered: ["spark", "blade"],
     board: Array(SIZE).fill(null),
     lastEnergyAt: Date.now()
@@ -124,7 +140,14 @@
     gloryTrophies: $("gloryTrophies"),
     gloryWins: $("gloryWins"),
     gloryMerges: $("gloryMerges"),
-    gloryPower: $("gloryPower")
+    gloryPower: $("gloryPower"),
+    soundToggle: $("soundToggle"),
+    soundIcon: $("soundIcon"),
+    matchupText: $("matchupText"),
+    matchupWrap: $("matchupWrap"),
+    battleStage: $("battleStage"),
+    confettiLayer: $("confettiLayer"),
+    achvList: $("achvList")
   };
 
   function asNumber(value, fallback) {
@@ -164,6 +187,9 @@
       const discovered = Array.isArray(parsed.discovered)
         ? parsed.discovered.filter((id) => typeof id === "string" && UNIT_DEFS.some((u) => u.id === id))
         : base.discovered;
+      const achievementsClaimed = Array.isArray(parsed.achievementsClaimed)
+        ? parsed.achievementsClaimed.filter((id) => typeof id === "string" && ACHIEVEMENTS.some((a) => a.id === id))
+        : base.achievementsClaimed;
       return {
         ...base,
         energy: Math.max(0, Math.min(ENERGY_MAX, Math.floor(asNumber(parsed.energy, base.energy)))),
@@ -175,6 +201,8 @@
         merges: Math.max(0, Math.floor(asNumber(parsed.merges, base.merges))),
         highestPower: Math.max(0, Math.floor(asNumber(parsed.highestPower, base.highestPower))),
         surgeBattles: Math.max(0, Math.floor(asNumber(parsed.surgeBattles, base.surgeBattles))),
+        soundOn: typeof parsed.soundOn === "boolean" ? parsed.soundOn : base.soundOn,
+        achievementsClaimed,
         lastEnergyAt: asNumber(parsed.lastEnergyAt, base.lastEnergyAt),
         discovered: discovered.length ? discovered : base.discovered,
         board: sanitizeBoard(parsed.board)
@@ -231,8 +259,13 @@
     return raw;
   }
 
+  function isBossWave(wave) {
+    return wave > 0 && wave % BOSS_INTERVAL === 0;
+  }
+
   function enemyPower(wave) {
-    return Math.round(28 + wave * 18 + Math.pow(wave, 1.35) * 4);
+    const base = Math.round(28 + wave * 18 + Math.pow(wave, 1.35) * 4);
+    return isBossWave(wave) ? Math.round(base * BOSS_MULTIPLIER) : base;
   }
 
   function emptySlots() {
@@ -318,7 +351,10 @@
       btn.classList.toggle("is-active", btn.dataset.nav === name);
     });
     if (name === "roster") renderRoster();
-    if (name === "rank") renderGlory();
+    if (name === "rank") {
+      renderGlory();
+      renderAchievements();
+    }
   }
 
   function setText(el, value) {
@@ -330,7 +366,7 @@
     setText(els.energyValue, state.energy);
     setText(els.gemValue, state.gems);
     setText(els.trophyValue, state.trophies);
-    setText(els.waveTitle, `Level ${state.wave}`);
+    setText(els.waveTitle, isBossWave(state.wave) ? `Level ${state.wave} · BOSS` : `Level ${state.wave}`);
     const power = squadPower();
     setText(els.powerValue, power);
     state.highestPower = Math.max(asNumber(state.highestPower, 0), power);
@@ -340,6 +376,7 @@
     if (els.battleButton) {
       els.battleButton.disabled = battleBusy || state.energy < 1 || power <= 0;
     }
+    renderMatchup();
   }
 
   function renderBoard() {
@@ -414,6 +451,83 @@
     setText(els.gloryWins, state.wins);
     setText(els.gloryMerges, state.merges);
     setText(els.gloryPower, state.highestPower);
+  }
+
+  function renderMatchup() {
+    if (!els.matchupText || !els.matchupWrap) return;
+    const power = squadPower();
+    const enemy = enemyPower(state.wave);
+    const boss = isBossWave(state.wave);
+    const ready = power >= enemy;
+    els.matchupWrap.classList.toggle("is-ready", ready);
+    els.matchupWrap.classList.toggle("is-short", !ready);
+    els.matchupWrap.classList.toggle("is-boss", boss);
+    const label = boss ? "BOSS needs" : "Level needs";
+    const status = ready ? "Ready to win!" : `Need +${enemy - power} power`;
+    setText(els.matchupText, `${label} ${enemy} power · ${status}`);
+  }
+
+  function renderAchievements() {
+    if (!els.achvList) return;
+    els.achvList.innerHTML = ACHIEVEMENTS.map((a) => {
+      const claimed = state.achievementsClaimed.includes(a.id);
+      const ready = !claimed && a.check(state);
+      const label = claimed ? "Claimed" : ready ? "Claim" : "Locked";
+      return `
+        <article class="achv-card ${claimed ? "is-claimed" : ""} ${ready ? "is-ready" : ""}">
+          <div class="achv-card__icon">${claimed ? "✓" : ready ? "★" : "🔒"}</div>
+          <div class="achv-card__body">
+            <h3>${a.title}</h3>
+            <p>${a.desc}</p>
+          </div>
+          <button class="achv-card__claim" type="button" data-achv="${a.id}" ${claimed || !ready ? "disabled" : ""}>
+            ${label}${!claimed ? ` · +${a.reward}💎` : ""}
+          </button>
+        </article>
+      `;
+    }).join("");
+  }
+
+  function claimAchievement(id) {
+    const achievement = ACHIEVEMENTS.find((a) => a.id === id);
+    if (!achievement) return;
+    if (state.achievementsClaimed.includes(id)) return;
+    if (!achievement.check(state)) return;
+    state.gems += achievement.reward;
+    state.achievementsClaimed.push(id);
+    saveState();
+    renderAchievements();
+    renderHud();
+    showToast(`${achievement.title} unlocked — +${achievement.reward} 💎`);
+    soundWin();
+    haptic("success");
+  }
+
+  function shakeStage() {
+    if (!els.battleStage) return;
+    els.battleStage.classList.remove("shake");
+    // restart the animation even if triggered twice quickly
+    void els.battleStage.offsetWidth;
+    els.battleStage.classList.add("shake");
+    setTimeout(() => els.battleStage.classList.remove("shake"), 420);
+  }
+
+  function spawnConfetti() {
+    if (!els.confettiLayer) return;
+    els.confettiLayer.innerHTML = "";
+    const colors = ["#ffc857", "#ff5fb8", "#5ef0d0", "#7aa7ff", "#ff9ad8"];
+    for (let i = 0; i < 24; i += 1) {
+      const piece = document.createElement("span");
+      piece.className = "confetti-piece";
+      piece.style.left = `${Math.random() * 100}%`;
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDelay = `${Math.random() * 200}ms`;
+      piece.style.animationDuration = `${900 + Math.random() * 500}ms`;
+      els.confettiLayer.appendChild(piece);
+    }
+    setTimeout(() => {
+      if (els.confettiLayer) els.confettiLayer.innerHTML = "";
+    }, 1600);
   }
 
   function bindUnitDrag(node, index) {
@@ -505,6 +619,7 @@
       renderBoard();
       showToast(`Combined → ${defById(merged.id).name} L${merged.level}!`);
       haptic("success");
+      soundMerge();
       return;
     }
 
@@ -541,6 +656,7 @@
     renderBoard();
     if (!forceId) showToast(`${defById(id).name} joined your team`);
     haptic("light");
+    soundSummon();
     return true;
   }
 
@@ -565,15 +681,18 @@
 
     const wave = state.wave;
     const enemy = enemyPower(wave);
+    const boss = isBossWave(wave);
     if (els.battleModal) els.battleModal.hidden = false;
     setText(els.fighterYou, `YOU ${power}`);
-    setText(els.fighterEnemy, `L${wave} ${enemy}`);
+    setText(els.fighterEnemy, `${boss ? "BOSS" : "L" + wave} ${enemy}`);
     if (els.youBar) els.youBar.style.width = "100%";
     if (els.enemyBar) els.enemyBar.style.width = "100%";
-    setText(els.battleLog, "Fight starting…");
+    setText(els.battleLog, boss ? "A boss approaches…" : "Fight starting…");
+    if (boss) soundBoss();
 
     await wait(700);
     setText(els.battleLog, "Heroes clash!");
+    shakeStage();
     await wait(700);
 
     // visual HP race based on power ratio
@@ -592,8 +711,9 @@
     if (state.surgeBattles > 0) state.surgeBattles -= 1;
 
     if (won) {
-      const trophyGain = 8 + wave * 2;
-      const gemGain = 20 + wave * 5;
+      const rewardMultiplier = boss ? BOSS_REWARD_MULTIPLIER : 1;
+      const trophyGain = (8 + wave * 2) * rewardMultiplier;
+      const gemGain = (20 + wave * 5) * rewardMultiplier;
       state.wins += 1;
       state.trophies += trophyGain;
       state.gems += gemGain;
@@ -603,7 +723,8 @@
       consumeWeakest();
       saveState();
       if (els.battleModal) els.battleModal.hidden = true;
-      showResult(true, wave, trophyGain, gemGain);
+      showResult(true, wave, trophyGain, gemGain, boss);
+      soundWin();
       haptic("success");
     } else {
       // soft loss: lose some trophies, keep wave
@@ -614,7 +735,8 @@
       consumeWeakest();
       saveState();
       if (els.battleModal) els.battleModal.hidden = true;
-      showResult(false, wave, -loss, gemGain);
+      showResult(false, wave, -loss, gemGain, false);
+      soundLose();
       haptic("error");
     }
 
@@ -636,10 +758,10 @@
     if (weakestIdx >= 0) state.board[weakestIdx] = null;
   }
 
-  function showResult(won, wave, trophies, gems) {
+  function showResult(won, wave, trophies, gems, boss) {
     if (!els.resultModal) return;
     els.resultModal.hidden = false;
-    setText(els.resultEyebrow, won ? "Victory" : "Defeat");
+    setText(els.resultEyebrow, won ? (boss ? "Boss Defeated" : "Victory") : "Defeat");
     setText(els.resultTitle, won ? `Level ${wave} Cleared` : `Level ${wave} Failed`);
     setText(
       els.resultText,
@@ -651,9 +773,11 @@
       els.resultRewards.innerHTML = `
         <span>${trophies >= 0 ? "+" : ""}${trophies} 🏆</span>
         <span>+${Math.max(0, gems)} 💎</span>
+        ${boss ? "<span>Boss bonus x2</span>" : ""}
         ${won ? "<span>Next level unlocked</span>" : "<span>Try again stronger</span>"}
       `;
     }
+    if (won) spawnConfetti();
   }
 
   function openPay(productId) {
@@ -715,6 +839,88 @@
     }
   }
 
+  let audioCtx = null;
+
+  function getAudioCtx() {
+    if (audioCtx) return audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try {
+      audioCtx = new Ctx();
+    } catch {
+      audioCtx = null;
+    }
+    return audioCtx;
+  }
+
+  function playTone(freq, duration, opts = {}) {
+    if (!state.soundOn) return;
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    try {
+      if (ctx.state === "suspended" && ctx.resume) ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = opts.type || "sine";
+      osc.frequency.value = freq;
+      const volume = opts.volume || 0.07;
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch {
+      // ignore autoplay / audio errors
+    }
+  }
+
+  function playSequence(notes) {
+    notes.forEach((note) => {
+      setTimeout(() => playTone(note.freq, note.duration, note), note.delay || 0);
+    });
+  }
+
+  function soundMerge() {
+    playTone(720, 0.12, { type: "triangle", volume: 0.06 });
+  }
+
+  function soundSummon() {
+    playTone(480, 0.08, { type: "sine", volume: 0.045 });
+  }
+
+  function soundWin() {
+    playSequence([
+      { freq: 520, duration: 0.12, delay: 0 },
+      { freq: 660, duration: 0.12, delay: 110 },
+      { freq: 880, duration: 0.22, delay: 220 }
+    ]);
+  }
+
+  function soundLose() {
+    playSequence([
+      { freq: 300, duration: 0.18, delay: 0, type: "sawtooth", volume: 0.05 },
+      { freq: 220, duration: 0.28, delay: 150, type: "sawtooth", volume: 0.05 }
+    ]);
+  }
+
+  function soundBoss() {
+    playTone(150, 0.4, { type: "square", volume: 0.045 });
+  }
+
+  function updateSoundToggleUI() {
+    if (els.soundIcon) els.soundIcon.textContent = state.soundOn ? "🔊" : "🔇";
+    if (els.soundToggle) els.soundToggle.setAttribute("aria-pressed", String(!state.soundOn));
+  }
+
+  function toggleSound() {
+    state.soundOn = !state.soundOn;
+    saveState();
+    updateSoundToggleUI();
+    if (state.soundOn) playTone(600, 0.08, { volume: 0.05 });
+  }
+
   function bind() {
     document.querySelectorAll(".dock__item").forEach((btn) => {
       btn.addEventListener("click", () => switchView(btn.dataset.nav));
@@ -746,6 +952,14 @@
     }
     if (els.payCancel) els.payCancel.addEventListener("click", closePay);
     if (els.payConfirm) els.payConfirm.addEventListener("click", confirmPay);
+
+    if (els.soundToggle) els.soundToggle.addEventListener("click", toggleSound);
+    if (els.achvList) {
+      els.achvList.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-achv]");
+        if (btn) claimAchievement(btn.dataset.achv);
+      });
+    }
   }
 
   function seedIfEmpty() {
@@ -759,13 +973,25 @@
     saveState();
   }
 
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {
+        // offline support is a bonus, never block the game on it
+      });
+    });
+  }
+
   function boot() {
     initTelegram();
     seedIfEmpty();
     bind();
+    updateSoundToggleUI();
     renderBoard();
     renderRoster();
     renderGlory();
+    renderAchievements();
+    registerServiceWorker();
     // soft energy tip
     if (state.energy <= 3) {
       setTimeout(() => showToast("Low energy — Shop keeps you playing."), 900);
