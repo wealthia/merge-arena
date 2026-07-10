@@ -1,0 +1,18 @@
+{
+  "name": "merge-arena-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Backend for Merge Arena: real Telegram Stars payments, analytics, and an admin dashboard.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.21.0"
+  }
+}

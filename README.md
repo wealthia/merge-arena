@@ -40,3 +40,18 @@ goes live.
 npm install
 npm test
 ```
+
+## Backend (real Stars payments, analytics, admin dashboard)
+
+The game works fully with no backend (free demo Shop purchases, no analytics — this is the
+default). An optional backend lives in [`server/`](server/README.md) that adds:
+
+- Real Telegram Stars payments for the Shop (with server-side price verification and Telegram
+  webhook confirmation — no purchase is ever granted on a client-side callback alone).
+- Analytics + ad-campaign attribution (which `start_param` / ad link brought which installs).
+- A password-protected `/admin` dashboard: users, DAU/WAU, revenue, revenue by product, revenue by
+  campaign, achievement claim counts, recent purchases/events.
+
+Setting it up requires a Telegram bot token and deploying `server/` somewhere with a public HTTPS
+URL — GitHub Pages can't host it. Full step-by-step instructions: **[server/README.md](server/README.md)**.
+Once deployed, point the game at it by setting `BACKEND_URL` near the top of `arena.js`.

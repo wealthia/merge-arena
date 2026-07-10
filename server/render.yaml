@@ -1,0 +1,36 @@
+# Render.com blueprint — https://render.com/docs/blueprint-spec
+# Deploy: push this repo, then in Render dashboard "New +" -> "Blueprint",
+# point it at this repo. Render will read this file automatically.
+#
+# After the first deploy, open the service's "Environment" tab and fill in
+# the values marked `sync: false` below (Render will prompt for these).
+services:
+  - type: web
+    name: merge-arena-server
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: WEBHOOK_SECRET_PATH
+        sync: false
+      - key: WEBHOOK_SECRET_TOKEN
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://wealthia.github.io
+      - key: DB_PATH
+        value: /app/data/merge-arena.sqlite
+    disk:
+      name: merge-arena-data
+      mountPath: /app/data
+      sizeGB: 1
