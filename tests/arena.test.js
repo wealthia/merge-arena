@@ -193,7 +193,29 @@ console.log("Test 6: regular (non-boss) levels do not get the boss multiplier");
   check("normal win does not double gems", finalState.gems === 80 + 40);
 }
 
-console.log("Test 7: manifest.json and service-worker.js are well-formed");
+console.log("Test 7: shop checkout is clearly disclosed as a free demo (no real payment)");
+{
+  const window = boot();
+  window.document.querySelector('[data-nav="shop"]').dispatchEvent(new window.Event("click"));
+  click(window, "energyChip"); // energyChip also opens the energy_refill pay modal directly
+  const payText = window.document.getElementById("payModal").textContent;
+  check("pay modal discloses this is a demo / not a real charge", /demo/i.test(payText) && /no real/i.test(payText));
+}
+
+console.log("Test 8: inviting friends never grants a reward (no farmable referral exploit)");
+{
+  const window = boot();
+  window.document.querySelector('[data-nav="rank"]').dispatchEvent(new window.Event("click"));
+  const gemsBefore = getSavedState(window).gems;
+  const trophiesBefore = getSavedState(window).trophies;
+  // jsdom has no navigator.share / clipboard, so this exercises the final toast fallback path.
+  click(window, "inviteButton");
+  const stateAfter = getSavedState(window);
+  check("share button grants no gems", stateAfter.gems === gemsBefore);
+  check("share button grants no trophies", stateAfter.trophies === trophiesBefore);
+}
+
+console.log("Test 9: manifest.json and service-worker.js are well-formed");
 {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "manifest.json"), "utf8"));
   check("manifest has icons array with 2 entries", Array.isArray(manifest.icons) && manifest.icons.length === 2);

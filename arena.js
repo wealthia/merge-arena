@@ -147,7 +147,8 @@
     matchupWrap: $("matchupWrap"),
     battleStage: $("battleStage"),
     confettiLayer: $("confettiLayer"),
-    achvList: $("achvList")
+    achvList: $("achvList"),
+    inviteButton: $("inviteButton")
   };
 
   function asNumber(value, fallback) {
@@ -785,7 +786,7 @@
     if (!product || !els.payModal) return;
     pendingPurchase = productId;
     setText(els.payTitle, product.title);
-    setText(els.payText, `${product.text} · Exact price: ${product.stars} Stars`);
+    setText(els.payText, `${product.text} · Listed price: ${product.stars} ★ (not charged yet)`);
     els.payModal.hidden = false;
   }
 
@@ -800,9 +801,9 @@
     const product = SHOP[productId];
     if (!product) return;
 
-    // Demo Stars purchase — exact item, no RNG shop packs.
+    // Demo checkout — no real Telegram Stars payment is processed here yet.
     const ok = window.confirm(
-      `Pay ${product.stars} Stars for ${product.title}?\n\nYou get exactly what is listed.`
+      `Get ${product.title} for free?\n\nThis is a demo — no real Stars are charged. Real Telegram Stars checkout is coming soon.`
     );
     if (!ok) return;
 
@@ -921,6 +922,36 @@
     if (state.soundOn) playTone(600, 0.08, { volume: 0.05 });
   }
 
+  // Honest, reward-free sharing: this app has no backend to verify who
+  // actually invited whom, so it never grants a "referral" reward — that
+  // would just be a free, unlimited currency farm (tap Share, cancel, repeat).
+  function shareGame() {
+    const shareUrl = "https://wealthia.github.io/merge-arena/";
+    const shareText = "Come play Merge Arena with me! 🔥";
+    const tg = window.Telegram && window.Telegram.WebApp;
+    try {
+      if (tg && tg.openTelegramLink) {
+        const link = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+        tg.openTelegramLink(link);
+        return;
+      }
+    } catch {
+      // fall through to web share / clipboard below
+    }
+    if (navigator.share) {
+      navigator.share({ title: "Merge Arena", text: shareText, url: shareUrl }).catch(() => {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(`${shareText} ${shareUrl}`)
+        .then(() => showToast("Link copied — share it with a friend!"))
+        .catch(() => showToast(`Share this link: ${shareUrl}`));
+      return;
+    }
+    showToast(`Share this link: ${shareUrl}`);
+  }
+
   function bind() {
     document.querySelectorAll(".dock__item").forEach((btn) => {
       btn.addEventListener("click", () => switchView(btn.dataset.nav));
@@ -954,6 +985,7 @@
     if (els.payConfirm) els.payConfirm.addEventListener("click", confirmPay);
 
     if (els.soundToggle) els.soundToggle.addEventListener("click", toggleSound);
+    if (els.inviteButton) els.inviteButton.addEventListener("click", shareGame);
     if (els.achvList) {
       els.achvList.addEventListener("click", (event) => {
         const btn = event.target.closest("[data-achv]");

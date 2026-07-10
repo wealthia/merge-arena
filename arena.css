@@ -588,6 +588,7 @@ button {
 }
 
 .offer {
+  position: relative;
   display: grid;
   grid-template-columns: 56px 1fr auto;
   gap: 12px;
@@ -596,6 +597,42 @@ button {
   border-radius: 20px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.04);
+}
+
+.offer::after {
+  content: "FREE — DEMO";
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #2a1030;
+  background: linear-gradient(90deg, #ffc857, #ff9ad8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.demo-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 87, 0.4);
+  background: rgba(255, 200, 87, 0.1);
+  font-size: 12px;
+}
+
+.demo-banner strong {
+  font-size: 12px;
+}
+
+.demo-banner span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .offer--rare {
@@ -725,6 +762,36 @@ button {
   font-size: 13px;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(122, 167, 255, 0.32);
+  background: rgba(122, 167, 255, 0.08);
+}
+
+.invite-card h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.invite-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.invite-card .btn--ghost {
+  min-height: 40px;
+  padding: 0 16px;
+  flex: 0 0 auto;
 }
 
 .section-head--tight {
@@ -1038,6 +1105,28 @@ button {
 .pay-note {
   font-size: 11px !important;
   opacity: 0.75;
+}
+
+.pay-note--banner {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 87, 0.45);
+  background: rgba(255, 200, 87, 0.12);
+  text-align: left;
+}
+
+.pay-note--banner strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.pay-note--banner span {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 @media (max-width: 360px) {
