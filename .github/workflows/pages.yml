@@ -47,10 +47,21 @@ jobs:
         with:
           enablement: true
 
+      # Only ship the actual game as static files. `server/` (backend
+      # source, even without secrets in it) and dev-only files (tests/,
+      # package.json, README.md, AGENTS.md, .github/) must never be
+      # published on the public site.
+      - name: Prepare Pages artifact
+        run: |
+          mkdir dist
+          cp index.html arena.js arena.css manifest.json service-worker.js dist/
+          cp .nojekyll dist/ 2>/dev/null || true
+          cp -r icons dist/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       - name: Deploy to GitHub Pages
         id: deployment

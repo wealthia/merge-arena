@@ -614,6 +614,11 @@ button {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
+.app.is-real-payments .offer::after {
+  content: "★ REAL STARS";
+  background: linear-gradient(90deg, #ffe29a, #ffc857);
+}
+
 .demo-banner {
   display: flex;
   flex-direction: column;

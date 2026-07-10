@@ -34,6 +34,14 @@ function check(label, condition) {
  *   loadState() picks it up (only the fields you pass are overridden).
  * @param {boolean} [opts.fastTimers] - make setTimeout fire synchronously so
  *   battle sequences (which use real timers) resolve instantly.
+ * @param {object} [opts.telegram] - if set, installs `window.Telegram.WebApp`
+ *   with these fields merged over sane defaults (ready/expand no-ops,
+ *   initData present) so `backendAvailable()` can be true in the test.
+ * @param {string} [opts.backendUrl] - if set, patches the shipped
+ *   `const BACKEND_URL = "";` to this value for this window only, so the
+ *   real-payment/analytics code paths (normally dormant by default) can be
+ *   exercised without ever hardcoding a real backend URL in the shipped file.
+ * @param {Function} [opts.fetchMock] - installed as `window.fetch` when set.
  */
 function boot(opts = {}) {
   const dom = new JSDOM(html, {
@@ -55,7 +63,33 @@ function boot(opts = {}) {
     window.localStorage.setItem("merge_arena_v2", JSON.stringify(opts.stateOverride));
   }
 
-  window.eval(arenaJs);
+  if (opts.telegram) {
+    window.Telegram = {
+      WebApp: {
+        initData: "auth_date=1&hash=test&user=%7B%22id%22%3A1%7D",
+        ready() {},
+        expand() {},
+        setHeaderColor() {},
+        setBackgroundColor() {},
+        openInvoice() {},
+        HapticFeedback: { notificationOccurred() {}, impactOccurred() {} },
+        ...opts.telegram
+      }
+    };
+  }
+
+  if (opts.fetchMock) {
+    window.fetch = opts.fetchMock;
+  }
+
+  const source = opts.backendUrl
+    ? arenaJs.replace('const BACKEND_URL = "";', `const BACKEND_URL = ${JSON.stringify(opts.backendUrl)};`)
+    : arenaJs;
+  assert(
+    !opts.backendUrl || source !== arenaJs,
+    "expected to find and patch the BACKEND_URL constant in arena.js"
+  );
+  window.eval(source);
   return window;
 }
 
@@ -222,6 +256,93 @@ console.log("Test 9: manifest.json and service-worker.js are well-formed");
   check("manifest icons referenced on disk exist", manifest.icons.every((icon) => fs.existsSync(path.join(ROOT, icon.src.replace("./", "")))));
   const sw = fs.readFileSync(path.join(ROOT, "service-worker.js"), "utf8");
   check("service worker references CACHE_NAME", sw.includes("CACHE_NAME"));
+}
+
+console.log("Test 10: with no BACKEND_URL configured (the shipped default), the shop stays in demo mode");
+{
+  const window = boot({ telegram: {} }); // even inside "Telegram", backendAvailable() must stay false
+  window.document.querySelector('[data-nav="shop"]').dispatchEvent(new window.Event("click"));
+  click(window, "energyChip");
+  check(
+    "pay modal still shows the demo disclosure, not a real-payment one",
+    /demo checkout/i.test(window.document.getElementById("payNoteTitle").textContent)
+  );
+}
+
+console.log("Test 11: with a backend configured, session init applies any pending real purchases");
+{
+  const fetchCalls = [];
+  const fetchMock = async (url, opts) => {
+    fetchCalls.push({ url: String(url), opts });
+    if (String(url).endsWith("/api/session")) {
+      return {
+        ok: true,
+        json: async () => ({ ok: true, entitlements: [{ productId: "gem_starter", starsAmount: 50, chargeId: "c1" }] })
+      };
+    }
+    return { ok: true, json: async () => ({ ok: true }) };
+  };
+
+  const window = boot({ telegram: {}, backendUrl: "https://backend.example.test", fetchMock });
+  await flush();
+
+  check("session request was sent with initData", fetchCalls.some((c) => c.url.endsWith("/api/session")));
+  const state = getSavedState(window);
+  check("gem_starter entitlement was applied (gems increased by 500)", state.gems === 80 + 500);
+}
+
+console.log("Test 12: with a backend configured, buying an item opens a real invoice instead of the demo confirm dialog");
+{
+  const fetchCalls = [];
+  let openInvoiceArgs = null;
+  const fetchMock = async (url) => {
+    fetchCalls.push(String(url));
+    if (String(url).includes("/api/session")) {
+      return { ok: true, json: async () => ({ ok: true, entitlements: [] }) };
+    }
+    if (String(url).includes("/api/invoice")) {
+      return { ok: true, json: async () => ({ ok: true, invoiceLink: "https://t.me/fake-invoice/1" }) };
+    }
+    if (String(url).includes("/api/entitlements")) {
+      // Simulates the webhook having already recorded the confirmed payment
+      // by the time the client polls for it after Telegram reports "paid".
+      return {
+        ok: true,
+        json: async () => ({ ok: true, entitlements: [{ productId: "energy_refill", starsAmount: 25, chargeId: "c2" }] })
+      };
+    }
+    return { ok: true, json: async () => ({ ok: true, entitlements: [] }) };
+  };
+
+  const window = boot({
+    telegram: {
+      openInvoice(url, callback) {
+        openInvoiceArgs = { url, callback };
+      }
+    },
+    backendUrl: "https://backend.example.test",
+    fetchMock
+  });
+  await flush();
+
+  window.document.querySelector('[data-nav="shop"]').dispatchEvent(new window.Event("click"));
+  click(window, "energyChip"); // opens the pay modal for energy_refill
+  check(
+    "pay modal shows the real-payment disclosure once a backend is active",
+    /real telegram stars/i.test(window.document.getElementById("payNoteTitle").textContent)
+  );
+
+  click(window, "payConfirm");
+  await flush();
+
+  check("clicking confirm called the backend for a real invoice, not window.confirm", fetchCalls.some((c) => c.endsWith("/api/invoice")));
+  check("Telegram's openInvoice was called with the returned invoice link", openInvoiceArgs && openInvoiceArgs.url === "https://t.me/fake-invoice/1");
+
+  // Simulate Telegram reporting the payment succeeded.
+  const gemsBefore = getSavedState(window).energy;
+  openInvoiceArgs.callback("paid");
+  await flush();
+  check("energy_refill was applied after Telegram confirmed payment", getSavedState(window).energy === 20 && gemsBefore !== 20);
 }
 
 console.log(`\n${passed} passed, ${failures} failed`);

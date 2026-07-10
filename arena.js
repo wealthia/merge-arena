@@ -8,6 +8,12 @@
   const BOSS_MULTIPLIER = 1.45;
   const BOSS_REWARD_MULTIPLIER = 2;
 
+  // Set this to your deployed backend URL (see server/README.md) to enable
+  // real Telegram Stars payments and analytics. Leave empty and the game
+  // keeps working exactly as before — free demo purchases, no analytics —
+  // so this is always safe to leave unset.
+  const BACKEND_URL = "";
+
   const UNIT_DEFS = [
     { id: "spark", name: "Spark", icon: "⚡", rarity: "common", basePower: 12 },
     { id: "blade", name: "Blade", icon: "🗡", rarity: "common", basePower: 14 },
@@ -136,6 +142,8 @@
     payText: $("payText"),
     payCancel: $("payCancel"),
     payConfirm: $("payConfirm"),
+    payNoteTitle: $("payNoteTitle"),
+    payNoteText: $("payNoteText"),
     gloryWave: $("gloryWave"),
     gloryTrophies: $("gloryTrophies"),
     gloryWins: $("gloryWins"),
@@ -148,7 +156,10 @@
     battleStage: $("battleStage"),
     confettiLayer: $("confettiLayer"),
     achvList: $("achvList"),
-    inviteButton: $("inviteButton")
+    inviteButton: $("inviteButton"),
+    app: $("app"),
+    shopBannerTitle: $("shopBannerTitle"),
+    shopBannerText: $("shopBannerText")
   };
 
   function asNumber(value, fallback) {
@@ -502,6 +513,7 @@
     showToast(`${achievement.title} unlocked — +${achievement.reward} 💎`);
     soundWin();
     haptic("success");
+    trackEvent("achievement_claimed", { id: achievement.id, reward: achievement.reward });
   }
 
   function shakeStage() {
@@ -621,6 +633,7 @@
       showToast(`Combined → ${defById(merged.id).name} L${merged.level}!`);
       haptic("success");
       soundMerge();
+      trackEvent("merge", { heroId: merged.id, level: merged.level });
       return;
     }
 
@@ -727,6 +740,7 @@
       showResult(true, wave, trophyGain, gemGain, boss);
       soundWin();
       haptic("success");
+      trackEvent("battle_win", { wave, boss, trophyGain, gemGain });
     } else {
       // soft loss: lose some trophies, keep wave
       const loss = Math.min(state.trophies, 4 + Math.floor(wave / 2));
@@ -739,6 +753,7 @@
       showResult(false, wave, -loss, gemGain, false);
       soundLose();
       haptic("error");
+      trackEvent("battle_loss", { wave, loss, gemGain });
     }
 
     battleBusy = false;
@@ -781,12 +796,144 @@
     if (won) spawnConfetti();
   }
 
+  function getInitData() {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    return tg && tg.initData ? tg.initData : "";
+  }
+
+  // Real payments/analytics only activate when both a backend is configured
+  // AND we're actually running inside Telegram (initData is only present
+  // there) — in a plain browser or with no backend set, everything below
+  // is skipped and the game behaves exactly as it always has.
+  function backendAvailable() {
+    return Boolean(BACKEND_URL) && Boolean(getInitData());
+  }
+
+  function trackEvent(name, props) {
+    if (!BACKEND_URL) return;
+    fetch(`${BACKEND_URL}/api/event`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ initData: getInitData(), name, props })
+    }).catch(() => {
+      // analytics must never break or block gameplay
+    });
+  }
+
+  function applyEntitlement(entitlement) {
+    const product = SHOP[entitlement.productId];
+    if (!product) return;
+    const err = product.apply(state);
+    if (typeof err === "string") return;
+    showToast(`${product.title} delivered — real Stars payment confirmed`);
+    haptic("success");
+    soundWin();
+  }
+
+  async function syncEntitlements() {
+    if (!backendAvailable()) return;
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/entitlements?initData=${encodeURIComponent(getInitData())}`
+      );
+      const json = await res.json();
+      if (json && Array.isArray(json.entitlements) && json.entitlements.length) {
+        json.entitlements.forEach(applyEntitlement);
+        saveState();
+        renderBoard();
+        renderHud();
+      }
+    } catch {
+      // backend unreachable — will retry on next app open via /api/session
+    }
+  }
+
+  async function initBackendSession() {
+    if (!backendAvailable()) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/session`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ initData: getInitData() })
+      });
+      const json = await res.json();
+      if (!res.ok) return; // e.g. server not configured with BOT_TOKEN yet — stay in demo mode
+      updateShopModeUi(true);
+      if (json && Array.isArray(json.entitlements) && json.entitlements.length) {
+        json.entitlements.forEach(applyEntitlement);
+        saveState();
+        renderBoard();
+        renderHud();
+      }
+    } catch {
+      // offline / backend down — game keeps working fully locally
+    }
+  }
+
+  function updateShopModeUi(real) {
+    if (els.app) els.app.classList.toggle("is-real-payments", real);
+    if (els.shopBannerTitle) {
+      els.shopBannerTitle.textContent = real ? "⭐ Real Stars checkout" : "🧪 Preview mode";
+    }
+    if (els.shopBannerText) {
+      els.shopBannerText.textContent = real
+        ? "Purchases below use real Telegram Stars — you'll see Telegram's own payment confirmation."
+        : "Nothing is charged yet — every item below is free while real Telegram Stars checkout is being built.";
+    }
+  }
+
+  async function startRealPurchase(productId, product) {
+    const tg = window.Telegram.WebApp;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/invoice`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ initData: getInitData(), productId })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.invoiceLink) {
+        showToast("Payment unavailable right now — try again later.");
+        return;
+      }
+      if (typeof tg.openInvoice !== "function") {
+        showToast("Update Telegram to the latest version to pay with Stars.");
+        return;
+      }
+      tg.openInvoice(json.invoiceLink, (status) => {
+        if (status === "paid") {
+          showToast("Payment confirmed — delivering your item…");
+          syncEntitlements();
+        } else if (status === "cancelled") {
+          showToast("Purchase cancelled.");
+        } else if (status === "failed") {
+          showToast("Payment failed. No Stars were charged.");
+        }
+      });
+    } catch {
+      showToast("Could not reach the store. Check your connection.");
+    }
+    void product; // product is looked up server-side; kept for logging/readability only
+  }
+
   function openPay(productId) {
     const product = SHOP[productId];
     if (!product || !els.payModal) return;
     pendingPurchase = productId;
     setText(els.payTitle, product.title);
-    setText(els.payText, `${product.text} · Listed price: ${product.stars} ★ (not charged yet)`);
+    const real = backendAvailable();
+    setText(
+      els.payText,
+      real
+        ? `${product.text} · Price: ${product.stars} ★`
+        : `${product.text} · Listed price: ${product.stars} ★ (not charged yet)`
+    );
+    setText(els.payNoteTitle, real ? "⭐ Real Telegram Stars payment" : "🧪 Demo checkout");
+    setText(
+      els.payNoteText,
+      real
+        ? "You'll be asked to confirm payment with real Telegram Stars."
+        : "No real Telegram Stars are charged. Real payments are coming soon."
+    );
     els.payModal.hidden = false;
   }
 
@@ -800,6 +947,13 @@
     const productId = pendingPurchase;
     const product = SHOP[productId];
     if (!product) return;
+
+    if (backendAvailable()) {
+      closePay();
+      trackEvent("purchase_ui_confirmed", { productId });
+      startRealPurchase(productId, product);
+      return;
+    }
 
     // Demo checkout — no real Telegram Stars payment is processed here yet.
     const ok = window.confirm(
@@ -1024,6 +1178,7 @@
     renderGlory();
     renderAchievements();
     registerServiceWorker();
+    initBackendSession();
     // soft energy tip
     if (state.energy <= 3) {
       setTimeout(() => showToast("Low energy — Shop keeps you playing."), 900);
